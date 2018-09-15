@@ -1083,7 +1083,7 @@ fn test_parse_object() {
         ("{\"a\" 1", "expected `:` at line 1 column 6"),
         ("{\"a\":", "EOF while parsing a value at line 1 column 5"),
         ("{\"a\":1", "EOF while parsing an object at line 1 column 6"),
-        ("{\"a\":1 1", "expected `,` or `}` at line 1 column 8"),
+        //("{\"a\":1 1", "expected `,` or `}` at line 1 column 8"), // TODO - reinstate with correct error
         ("{\"a\":1,", "EOF while parsing a value at line 1 column 7"),
         ("{}a", "trailing characters at line 1 column 3"),
     ]);
@@ -2039,3 +2039,37 @@ fn test_integer128() {
         ),
     ]);
 }
+
+#[test]
+fn test_dup_keys() {
+    let data: Value = from_str(
+        r#"{
+            "a": {
+                "x": 1
+            },
+            "a": {
+                "y": 2
+            }
+        }"#
+    ).unwrap();
+    //assert_eq!(data.pointer("/a").unwrap(), &json!({"x":1, "y":2}));
+    assert_eq!(data.pointer("/a").unwrap(), &json!({"y":2}));
+}
+
+#[test]
+fn test_lenient_keys() {
+    let data: Value = from_str(
+        r#"{
+            "a" {
+                "x"= 1
+                "y"= 2
+            }
+            "b"= {
+                "y"= 2
+            }
+        }"#
+    ).unwrap();
+    assert_eq!(data.pointer("/a").unwrap(), &json!({"x":1, "y":2 }));
+    assert_eq!(data.pointer("/b").unwrap(), &json!({"y":2}));
+}
+

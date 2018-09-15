@@ -713,6 +713,18 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
     }
+    fn parse_after_key(&mut self) -> Result<()> {
+        match try!(self.parse_whitespace()) {
+            Some(b':') | Some(b'=') => {
+                self.eat_char();
+                Ok(())
+            },
+            Some(b'{') => Ok(()),
+            Some(_) => Err(self.peek_error(ErrorCode::ExpectedColon)), //TODO Change this error code
+            None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
+        }
+    }
+
 
     fn end_seq(&mut self) -> Result<()> {
         match try!(self.parse_whitespace()) {
@@ -1705,12 +1717,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
                 try!(self.de.parse_whitespace())
             }
             Some(b) => {
-                if self.first {
-                    self.first = false;
-                    Some(b)
-                } else {
-                    return Err(self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
-                }
+                self.first = false;
+                Some(b)
             }
             None => {
                 return Err(self.de.peek_error(ErrorCode::EofWhileParsingObject));
@@ -1729,7 +1737,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        try!(self.de.parse_object_colon());
+        try!(self.de.parse_after_key());
 
         seed.deserialize(&mut *self.de)
     }
